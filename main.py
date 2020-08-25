@@ -3,14 +3,6 @@ import time
 import os
 import subprocess
 
-"""
-todo:
--check/uncheck runs program
--check for file format and run appropriately
--open terminal on check/uncheck
--delete file after running
--unchecking program kills the process
-"""
 
 path = "/home/bror/.local/share/evolution/tasks/system/tasks.ics"
 
