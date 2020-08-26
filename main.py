@@ -2,37 +2,157 @@ import sys
 import time
 import os
 import subprocess
+from operator import itemgetter
+
+tasksPath = "/home/bror/.local/share/evolution/tasks/system/tasks.ics"
 
 
-path = "/home/bror/.local/share/evolution/tasks/system/tasks.ics"
+def get_script_ext(scriptname):
+    """Returns the script extension.
+    This function is usefull if we wish to support several programming languanges"""
+    try:
+        if scriptname[-3:] == ".py":
+            return "python"
+    except IndexError:
+        return
 
 
-def run():
-    with open(path, "r+") as file:
-        data = file.readlines()
+def readTasks():
+    """Reads the tasks.ics file and returns all its content"""
+    with open(tasksPath, "r+") as file:
+        lines = file.readlines()
+    return lines
 
-    for i, dat in enumerate(data):
-        if "DESCRIPTION:" in dat:
-            code = data[i][12:].strip().split("\\n")
-        if "SUMMARY:" in dat:
-            program = data[i][8:-1]
-    with open(f"{program}", "w+") as file:
-        for line in code:
-            file.write(f"{line}\n")
-    subprocess.run(["python3", program])
 
+def parseTasks():
+    """Parses the lines from the tasks.ics file and for each todo-list returns three objects:
+        (1) program name, (2) activation status, (3) program code,
+    """
+    lines = readTasks()
+    parsed = []
+    subparse = []
+    statusDict = {"COMPLETED": 1, "NEEDS-ACTION": 0}
+    for line in lines:
+        if "SUMMARY:" in line:
+            subparse.append(line[8:-1])
+        elif "STATUS:" in line:
+            subparse.append(statusDict[line[7:-1]])
+        elif "DESCRIPTION:" in line:
+            subparse.append(line[12:-1])
+        if len(subparse) == 3:
+            parsed.append(subparse[:])
+            subparse = []
+        # print(parsed)
+    # dtype = [("name", "S10"), ("active", "S10"), ("program", "S10")]
+    # parsedArr = np.array([tuple(a) for a in parsed[:]], dtype=dtype)
+    # parsed_sorted = sorted(parsed, key=itemgetter(1))
+    # print(parsed_sorted)
+    # print(parsed)
+    # print(sorted(parsed, key=itemgetter(0)))
+    # print(parsed)
+    # print("...")
+    return sorted(parsed, key=itemgetter(0))
+
+
+def retrieve_activated_program(prev_allPrograms):
+    """ When a program is activated, we need to know which one has been activated.
+        This function returns a tuple that contains (1) the filename, and (2) the program code.
+        The current parse is compared to the passed parse of earlier programs to locate with program has been toggled
+    """
+    allPrograms = parseTasks()
+    # print(allPrograms)
+    for i, program in enumerate(allPrograms):
+        if prev_allPrograms[i][1] != program[1] == 1:
+            return program
+
+
+def retrieve_all_active_programs():
+    """ Returns a list of all programs that are currently active"""
+    allPrograms = parseTasks()
+    programsToRun = []
+    for i, program in enumerate(allPrograms):
+        if program[1] == 1:
+            programsToRun.append(program)
+    return programsToRun
+
+
+def create_and_fill_script(parsed):
+    scriptname = parsed[0]
+    scriptcode = parsed[2]
+    with open(f"{scriptname}", "w+") as script:
+        for line in scriptcode.split("\\n"):
+            script.write(line + "\n")
+
+
+def run_script(scriptname):
+    ext = get_script_ext(scriptname)
+    if ext == "python":
+        subprocess.run(["python3", scriptname])
+        subprocess.run(["rm", scriptname])
+
+
+def filesizeChange(currsize):
+    # checks if file has changes size
+    if currsize != os.path.getsize(tasksPath):
+        return True
+
+
+def loop():
+    # the main loop.
+    # prevparse is the previous parse with a activation toggle, needed to find which program was toggled
+    size = os.path.getsize(tasksPath)
+    prev_allPrograms = parseTasks()
+    while True:
+        if size != os.path.getsize(tasksPath):
+            activated_program = retrieve_activated_program(prev_allPrograms)
+            if activated_program:  #  is None if program was turned off instead of activated
+                create_and_fill_script(activated_program)
+                run_script(activated_program[0])
+            prev_allPrograms = parseTasks()
+            size = os.path.getsize(tasksPath)
+        time.sleep(0.2)
+
+
+def init():
+    # initiallizes the code. Any program that is checked, has to be run
+    all_active_programs = retrieve_all_active_programs()
+    if len(all_active_programs) > 0:
+        for program in all_active_programs:
+            create_and_fill_script(program)
+            run_script(program[0])
+
+
+init()
+loop()
+
+# def run():
+#     with open(tasksPath, "r+") as file:
+#         data = file.readlines()
+#
+#     for i, dat in enumerate(data):
+#         if "DESCRIPTION:" in dat:
+#             progidx = i
+#             code = data[i][12:].strip().split("\\n")
+#         if "SUMMARY:" in dat:
+#             program = data[i][8:-1]
+#     with open(f"{program}", "w+") as file:
+#         for line in code:
+#             file.write(f"{line}\n")
+#     # with open(tasksPath, "w") as file:
+#     #     data[progidx] = data[progidx][:-1] + "  TEEEEEEEST\n"
+#     #     print(data[progidx])
+#     #     file.writelines(data)
+#
+#     subprocess.run(["python3", program])
+#
 
 # prototype for check-loop
-size = os.path.getsize(path)
-while True:
-    if size != os.path.getsize(path):
-        print("CHECK!")
-        run()
-        size = os.path.getsize(path)
-    time.sleep(0.2)
+# size = os.path.getsize(tasksPath)
+# while True:
+#     if size != os.path.getsize(tasksPath):
+#         print("CHECK!")
+#         run()
+#         size = os.path.getsize(tasksPath)
+#     time.sleep(0.2)
 
 # args = [int(a) for a in sys.argv[1:]]
-
-
-print(code)
-print(program)
