@@ -32,25 +32,27 @@ def parseTasks():
     parsed = []
     subparse = []
     statusDict = {"COMPLETED": 1, "NEEDS-ACTION": 0}
-    for line in lines:
+    iterable = iter(enumerate(lines))
+    for i, line in iterable:
         if "SUMMARY:" in line:
             subparse.append(line[8:-1])
         elif "STATUS:" in line:
             subparse.append(statusDict[line[7:-1]])
         elif "DESCRIPTION:" in line:
-            subparse.append(line[12:-1])
+            # if the program is multi-lined, we need to know where the code stops
+            j = 1
+            while True:
+                if "END:VTODO" in lines[i + j]:
+                    break
+                j += 1
+            program_text = ""
+            for a in lines[i : i + j]:
+                program_text += a[:-1]
+            program_text = program_text.replace("\\n", "§").replace("\\", "").replace("§", "\\n")
+            subparse.append(program_text[12:])
         if len(subparse) == 3:
             parsed.append(subparse[:])
             subparse = []
-        # print(parsed)
-    # dtype = [("name", "S10"), ("active", "S10"), ("program", "S10")]
-    # parsedArr = np.array([tuple(a) for a in parsed[:]], dtype=dtype)
-    # parsed_sorted = sorted(parsed, key=itemgetter(1))
-    # print(parsed_sorted)
-    # print(parsed)
-    # print(sorted(parsed, key=itemgetter(0)))
-    # print(parsed)
-    # print("...")
     return sorted(parsed, key=itemgetter(0))
 
 
