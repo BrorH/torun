@@ -20,6 +20,8 @@ def get_script_ext(scriptname):
     try:
         if scriptname[-3:] == ".py":
             return "python"
+        elif scriptname[-4:] == ".cpp":
+            return "c++"
     except IndexError:
         return
 
@@ -100,6 +102,11 @@ def run_script(scriptname):
     if ext == "python":
         subprocess.run(["python3", scriptname])
         subprocess.run(["rm", scriptname])
+    elif ext == "c++":
+        # should be extended for support of compiling flags
+        subprocess.run(["g++", scriptname])
+        subprocess.run(["./a.out"])
+        subprocess.run(["rm", "a.out", scriptname])
 
 
 def loop():
