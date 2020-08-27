@@ -2,7 +2,6 @@ import sys
 import time
 import os
 import subprocess
-from operator import itemgetter, attrgetter
 
 
 def usr_name():
@@ -103,12 +102,6 @@ def run_script(scriptname):
         subprocess.run(["rm", scriptname])
 
 
-def filesizeChange(currsize):
-    # checks if file has changes size
-    if currsize != os.path.getsize(tasksPath):
-        return True
-
-
 def loop():
     # the main loop.
     # prevparse is the previous parse with a activation toggle, needed to find which program was toggled
@@ -139,34 +132,3 @@ def init():
 init()
 loop()
 
-# def run():
-#     with open(tasksPath, "r+") as file:
-#         data = file.readlines()
-#
-#     for i, dat in enumerate(data):
-#         if "DESCRIPTION:" in dat:
-#             progidx = i
-#             code = data[i][12:].strip().split("\\n")
-#         if "SUMMARY:" in dat:
-#             program = data[i][8:-1]
-#     with open(f"{program}", "w+") as file:
-#         for line in code:
-#             file.write(f"{line}\n")
-#     # with open(tasksPath, "w") as file:
-#     #     data[progidx] = data[progidx][:-1] + "  TEEEEEEEST\n"
-#     #     print(data[progidx])
-#     #     file.writelines(data)
-#
-#     subprocess.run(["python3", program])
-#
-
-# prototype for check-loop
-# size = os.path.getsize(tasksPath)
-# while True:
-#     if size != os.path.getsize(tasksPath):
-#         print("CHECK!")
-#         run()
-#         size = os.path.getsize(tasksPath)
-#     time.sleep(0.2)
-
-# args = [int(a) for a in sys.argv[1:]]
