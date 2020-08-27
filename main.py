@@ -4,7 +4,15 @@ import os
 import subprocess
 from operator import itemgetter
 
-tasksPath = "/home/bror/.local/share/evolution/tasks/system/tasks.ics"
+
+def usr_name():
+    proc = subprocess.run(["pwd"], stdout=subprocess.PIPE)
+    path = proc.stdout.decode("utf-8")
+    usr = path.split("/")[2]
+    return usr
+
+
+tasksPath = f"/home/{usr_name()}/.local/share/evolution/tasks/system/tasks.ics"
 
 
 def get_script_ext(scriptname):
@@ -48,7 +56,9 @@ def parseTasks():
             program_text = ""
             for a in lines[i : i + j]:
                 program_text += a[:-1]
-            program_text = program_text.replace("\\n", "§").replace("\\", "").replace("§", "\\n")
+            program_text = (
+                program_text.replace("\\n", "§").replace("\\", "").replace("§", "\\n")
+            )
             subparse.append(program_text[12:])
         if len(subparse) == 3:
             parsed.append(subparse[:])
@@ -107,7 +117,9 @@ def loop():
     while True:
         if size != os.path.getsize(tasksPath):
             activated_program = retrieve_activated_program(prev_allPrograms)
-            if activated_program:  #  is None if program was turned off instead of activated
+            if (
+                activated_program
+            ):  #  is None if program was turned off instead of activated
                 create_and_fill_script(activated_program)
                 run_script(activated_program[0])
             prev_allPrograms = parseTasks()
