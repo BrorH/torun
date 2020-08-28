@@ -2,7 +2,6 @@ import sys
 import time
 import os
 import subprocess
-from operator import itemgetter
 
 
 def usr_name():
@@ -21,6 +20,8 @@ def get_script_ext(scriptname):
     try:
         if scriptname[-3:] == ".py":
             return "python"
+        elif scriptname[-4:] == ".cpp":
+            return "c++"
     except IndexError:
         return
 
@@ -38,14 +39,14 @@ def parseTasks():
     """
     lines = readTasks()
     parsed = []
-    subparse = []
+    subparse = {}
     statusDict = {"COMPLETED": 1, "NEEDS-ACTION": 0}
     iterable = iter(enumerate(lines))
     for i, line in iterable:
         if "SUMMARY:" in line:
-            subparse.append(line[8:-1])
+            subparse["name"] = line[8:-1]  # drop search-key and newline
         elif "STATUS:" in line:
-            subparse.append(statusDict[line[7:-1]])
+            subparse["status"] = statusDict[line[7:-1]]  # drop search-key and newline
         elif "DESCRIPTION:" in line:
             # if the program is multi-lined, we need to know where the code stops
             j = 1
@@ -55,15 +56,15 @@ def parseTasks():
                 j += 1
             program_text = ""
             for a in lines[i : i + j]:
-                program_text += a[:-1]
+                program_text += a[:-1]  # drop newline
             program_text = (
                 program_text.replace("\\n", "§").replace("\\", "").replace("§", "\\n")
             )
-            subparse.append(program_text[12:])
+            subparse["code"] = program_text[12:]
         if len(subparse) == 3:
-            parsed.append(subparse[:])
-            subparse = []
-    return sorted(parsed, key=itemgetter(0))
+            parsed.append(subparse)
+            subparse = {}
+    return sorted(parsed, key=lambda i: i["name"])
 
 
 def retrieve_activated_program(prev_allPrograms):
@@ -74,7 +75,7 @@ def retrieve_activated_program(prev_allPrograms):
     allPrograms = parseTasks()
     # print(allPrograms)
     for i, program in enumerate(allPrograms):
-        if prev_allPrograms[i][1] != program[1] == 1:
+        if prev_allPrograms[i]["status"] != program["status"] == 1:
             return program
 
 
@@ -83,14 +84,14 @@ def retrieve_all_active_programs():
     allPrograms = parseTasks()
     programsToRun = []
     for i, program in enumerate(allPrograms):
-        if program[1] == 1:
+        if program["status"] == 1:
             programsToRun.append(program)
     return programsToRun
 
 
 def create_and_fill_script(parsed):
-    scriptname = parsed[0]
-    scriptcode = parsed[2]
+    scriptname = parsed["name"]
+    scriptcode = parsed["code"]
     with open(f"{scriptname}", "w+") as script:
         for line in scriptcode.split("\\n"):
             script.write(line + "\n")
@@ -101,12 +102,11 @@ def run_script(scriptname):
     if ext == "python":
         subprocess.run(["python3", scriptname])
         subprocess.run(["rm", scriptname])
-
-
-def filesizeChange(currsize):
-    # checks if file has changes size
-    if currsize != os.path.getsize(tasksPath):
-        return True
+    elif ext == "c++":
+        # should be extended for support of compiling flags
+        subprocess.run(["g++", scriptname])
+        subprocess.run(["./a.out"])
+        subprocess.run(["rm", "a.out", scriptname])
 
 
 def loop():
@@ -121,7 +121,7 @@ def loop():
                 activated_program
             ):  #  is None if program was turned off instead of activated
                 create_and_fill_script(activated_program)
-                run_script(activated_program[0])
+                run_script(activated_program["name"])
             prev_allPrograms = parseTasks()
             size = os.path.getsize(tasksPath)
         time.sleep(0.2)
@@ -133,40 +133,9 @@ def init():
     if len(all_active_programs) > 0:
         for program in all_active_programs:
             create_and_fill_script(program)
-            run_script(program[0])
+            run_script(program["name"])
 
 
 init()
 loop()
 
-# def run():
-#     with open(tasksPath, "r+") as file:
-#         data = file.readlines()
-#
-#     for i, dat in enumerate(data):
-#         if "DESCRIPTION:" in dat:
-#             progidx = i
-#             code = data[i][12:].strip().split("\\n")
-#         if "SUMMARY:" in dat:
-#             program = data[i][8:-1]
-#     with open(f"{program}", "w+") as file:
-#         for line in code:
-#             file.write(f"{line}\n")
-#     # with open(tasksPath, "w") as file:
-#     #     data[progidx] = data[progidx][:-1] + "  TEEEEEEEST\n"
-#     #     print(data[progidx])
-#     #     file.writelines(data)
-#
-#     subprocess.run(["python3", program])
-#
-
-# prototype for check-loop
-# size = os.path.getsize(tasksPath)
-# while True:
-#     if size != os.path.getsize(tasksPath):
-#         print("CHECK!")
-#         run()
-#         size = os.path.getsize(tasksPath)
-#     time.sleep(0.2)
-
-# args = [int(a) for a in sys.argv[1:]]
